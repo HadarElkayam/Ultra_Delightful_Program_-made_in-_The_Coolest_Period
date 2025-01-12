@@ -1,5 +1,7 @@
 #client file
 import socket
+import sys
+import codecs
 
 def start_up():
     units_start = [' ', 'K', 'M', 'G']
@@ -42,7 +44,27 @@ def start_up():
             TCP_num = int(numbers[0])
             UDP_num = int(numbers[1])
             good_protocol_number_string = True
+    print("All arguments are valid")
     return size, TCP_num, UDP_num
+
+def looking_for_a_server(size):
+    server_recieved = False
+    sol = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
+    IP_address = socket.gethostbyname(socket.gethostname())
+    port_num = 5000
+    magic_cookie = "abcddcba"
+    message_type = 3
+    message_to_send = codecs.encode(magic_cookie + message_type + size, 'utf-8')
+    sol.bind(IP_address, port_num)
+    print("Our IP adress is: %s\nWe use a port number: %d", IP_address, port_num)
+    sol.send(message_to_send)
+    print("Client started, listening for offer requests...")
+    sol.listen(1)
+    (connection_socket, server_address) = sol.accept()    
+    return connection_socket, server_address[0], server_address[1]
+        
+        
 if __name__ == '__main__':
     #starting the client 
     size, TCP_num, UDP_num = start_up()
+    connection_socket, server_adress, server_port = looking_for_a_server(size)
