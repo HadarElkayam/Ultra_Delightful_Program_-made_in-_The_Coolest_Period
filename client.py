@@ -134,7 +134,7 @@ def udp_connection(size, connection_socket, server_udp_port_num, port_num, serve
     message_to_send = codecs.encode(magic_cookie + 3 + size, 'utf-8')
     connection_socket.sendto(message_to_send, (server_IP_address, server_udp_port_num))
     total_segments = 0
-    current_segemnt = 0
+    current_segment = 0
     segment_counter = 0
     end = False
     start_time = time.time()
@@ -155,7 +155,7 @@ def udp_connection(size, connection_socket, server_udp_port_num, port_num, serve
                     total_segments = int(recieved_message[9:17].decode())
                     current_segment = int(recieved_message[17:25].decode())
                     segment_counter = segment_counter + 1                    
-                if current_segemnt == total_segments and segment_counter == total_segments:
+                if current_segment == total_segments and segment_counter == total_segments:
                     end_time = time.time()
                     transfer_time = end_time - start_time
                     print("UDP transfer #%d finished, total time: %d seconds, total speed: %.2f bits/second, percentage of packets received successfully: %d", transfer_num, transfer_time, size/transfer_time, segment_counter/total_segments)
