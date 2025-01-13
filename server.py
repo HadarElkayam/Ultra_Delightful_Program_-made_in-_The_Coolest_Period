@@ -84,4 +84,7 @@ if __name__ == '__main__':
     offer_thread = threading.Thread(target=send_offers, args=(IP_address, port_num, server_udp_port_num, server_tcp_port_num,))
     udp_connections_thread = threading.Thread(target=udp_connections, args=(udp_socket, magic_cookie, server_udp_port_num + 1000, IP_address))
     tcp_connections_thread = threading.Thread(target=tcp_connections, args=(tcp_socket, server_udp_port_num + 2000, IP_address))
+    offer_thread.start()
+    udp_connections_thread.start()
+    tcp_connections_thread.start()
 
