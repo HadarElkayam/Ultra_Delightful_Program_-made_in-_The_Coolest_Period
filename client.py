@@ -21,7 +21,7 @@ def start_up():
                 space_index = file_size_string.find('b')
                 if space_index != -1:
                     if file_size_string[space_index - 1] in units_start:
-                        size = 2 ** (10 * units_start.index(file_size_string[space_index - 1]))
+                        size = 2 ** (-3 + 10 * units_start.index(file_size_string[space_index - 1]))
                         good_file_size_string = True
                     else:
                         print("Invalid unit")
@@ -30,7 +30,7 @@ def start_up():
                     if space_index == -1 or file_size_string[space_index - 1] not in units_start:
                         print("Invalid unit")
                     else:
-                        size = 2 ** (3 + 10 * units_start.index(file_size_string[space_index - 1]))
+                        size = 2 ** (10 * units_start.index(file_size_string[space_index - 1]))
                         good_file_size_string = True
         else:
             print("Invalid number of arguments")
@@ -52,7 +52,7 @@ def start_up():
 def looking_for_a_server(port_num):
     server_recieved = False
     connection_socket = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
-    IP_address = socket.gethostbyname(socket.gethostname())
+    IP_address = '127.0.0.1' #socket.gethostbyname(socket.gethostname())
     magic_cookie = "abcddcba"
     server_udp_port_num = 0
     server_tcp_port_num = 0
@@ -98,77 +98,87 @@ def speed_test(size, TCP_num, UDP_num, connection_socket, server_udp_port_num, s
 def tcp_connection(size, server_tcp_port_num, port_num, IP_address, server_IP_address, transfer_num):
     connection_socket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
     connection_socket.bind((IP_address, port_num))
-    message_to_send = str(size) + "\n"
-    message_to_send = codecs.decode(message_to_send, 'hex')
+    message_to_send = hex(size)[2:]
+    if len(message_to_send) % 2 != 0:
+        message_to_send = message_to_send.rjust(1 + len(message_to_send), '0')
+    message_to_send = codecs.decode(message_to_send, 'hex') + b'\n'
 
-    right_size = False
-    while not right_size:
+    end = False
+    while not end:
         try:
-            connection_socket.settimeout(1)
             start_time = time.time()
-            connection_socket.sendto(message_to_send, (server_IP_address, server_tcp_port_num))
             print(f"Client waiting for TCP message from server, with IP {server_IP_address}...")
-            specific_connection_socket, _ = connection_socket.accept()
-            recieved_message = specific_connection_socket.recv(size + 1)
+            connection_socket.connect((server_IP_address, server_tcp_port_num))
+            connection_socket.settimeout(1)
+            connection_socket.send(message_to_send)
+            recieved_message = connection_socket.recv(size + 1)
             connection_socket.settimeout(None)
             end_time = time.time()
             if len(recieved_message) != size + 1:
-                print(f"Client recived data from server with IP {server_IP_address} in TCP transfer number {transfer_num} in the wrong size, tries again...")
+                print(f"Client recived data from server with IP {server_IP_address} in TCP transfer number {transfer_num} in the wrong size, failed.")
+                end = True
             else:
                 transfer_time = end_time - start_time
                 print(f"TCP transfer #{transfer_num} finished, total time: {transfer_time} seconds, total speed: {round(size/transfer_time, 2)} bits/second")
-                right_size = True
+                end = True
         except socket.timeout:
             print(f"In TCP transfer number {transfer_num}, server did not respond for a full second, assumes server has been disconnected")        
-            right_size = True
+            end = True
     connection_socket.close()
     
 def udp_connection(size, connection_socket, server_udp_port_num, port_num, server_IP_address, transfer_num, magic_cookie, IP_address):
     connection_socket = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
     connection_socket.bind((IP_address, port_num))
-    message_to_send = codecs.decode(magic_cookie + str(3) + str(size), 'hex')
+    hex_size = hex(size)[2:]
+    if len(hex_size) != 16:
+        hex_size = hex_size.rjust(16, '0')
+    message_to_send = codecs.decode(magic_cookie + "03" + hex_size, 'hex')
     connection_socket.sendto(message_to_send, (server_IP_address, server_udp_port_num))
     total_segments = 0
     current_segment = 0
     segment_counter = 0
+    segment_len = 0
     end = False
     start_time = time.time()
+    print(f"Client waiting for UDP transfer number {transfer_num} payloads from server, with IP {server_IP_address}...")
+    try:
+        connection_socket.sendto(message_to_send, (server_IP_address, server_udp_port_num))
+        connection_socket.settimeout(1)
+    except socket.timeout:
+        print(f"In UDP transfer number {transfer_num}, server did not respond for a full second, assumes server has been disconnected or finished transfering")
+        end = True
     while not end:
         try:
-            connection_socket.settimeout(1)
-            connection_socket.sendto(message_to_send, (server_IP_address, server_udp_port_num))
-            print(f"Client waiting for UDP transfer number {transfer_num} payload from server, with IP {server_IP_address}...")
             (recieved_message, recieved_server_IP_address) = connection_socket.recvfrom(size)
             connection_socket.settimeout(None)
-            if recieved_server_IP_address == server_IP_address:
-                recieved_message = recieved_message.decode("utf-8")
+            if recieved_server_IP_address[0] == server_IP_address:
                 if codecs.encode(recieved_message[0:4], 'hex').decode() != magic_cookie:
                     print(f"Client UDP transfer number {server_IP_address} recieved a payload with the wrong cookie from the server")
-                elif int(codecs.encode(recieved_message[4:5], 'hex').hex(), 16) != 4:
+                elif int(codecs.encode(recieved_message[4:5], 'hex'), 16) != 4:
                     print(f"Client UDP transfer number {transfer_num} recieved wrong message type")
                 else:
                     total_segments = int(codecs.encode(recieved_message[5:13], 'hex'), 16)
                     current_segment = int(codecs.encode(recieved_message[13:21], 'hex'), 16)
                     segment_counter = segment_counter + 1                    
-                    segment_len = len(recieved_message) - 20
-                if current_segment == total_segments and segment_counter == total_segments:
+                    segment_len = segment_len + len(recieved_message) - 20
+                if current_segment == total_segments or segment_counter == total_segments:
                     end_time = time.time()
                     transfer_time = end_time - start_time
-                    print(f"UDP transfer #{transfer_num} finished, total time: {transfer_time} seconds, total speed: {round(size/transfer_time, 2)} bits/second, percentage of packets received successfully: {round(segment_counter/total_segments, 0)}")
+                    print(f"UDP transfer #{transfer_num} finished, total time: {transfer_time} seconds, total speed: {round(size/transfer_time, 2)} bits/second, percentage of packets received successfully: {int(segment_counter/total_segments)*100}%")
                     end = True
         except socket.timeout:
             print(f"In UDP transfer number {transfer_num}, server did not respond for a full second, assumes server has been disconnected or finished transfering")
             end_time = time.time()
             transfer_time = end_time - start_time
-            print(f"UDP transfer #{transfer_num} finished, total time: {transfer_time} seconds, total speed: {round(size/transfer_time, 2)} bits/second, percentage of packets received successfully: {round(segment_counter/total_segments, 0)}")
+            print(f"UDP transfer #{transfer_num} finished, total time: {transfer_time} seconds, total speed: {round(size/transfer_time, 2)} bits/second, percentage of packets received successfully: {int(segment_counter/total_segments)}%")
     connection_socket.close()
     
     
         
 if __name__ == '__main__':
     #starting the client
-    port_num = 5000 
+    port_num = 5005
     while True:
         size, TCP_num, UDP_num = start_up()
         connection_socket, server_udp_port_num, server_tcp_port_num, IP_address, server_IP_address = looking_for_a_server(port_num)
-        speed_test(size, TCP_num, UDP_num, connection_socket, server_udp_port_num, server_tcp_port_num, IP_address, server_IP_address, port_num + 1)
+        speed_test(size, TCP_num, UDP_num, connection_socket, server_udp_port_num, server_tcp_port_num, IP_address, server_IP_address, port_num + 3000)
