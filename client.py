@@ -61,13 +61,13 @@ def looking_for_a_server(port_num):
     print("Client started, listening for offer requests...")
     while not server_recieved:
         (response, server_IP_address) = connection_socket.recvfrom(1024)
-        if codecs.encode(response[0:4], 'hex').hex() != magic_cookie: 
+        if codecs.encode(response[0:4], 'hex').decode() != magic_cookie: 
             print("recieved an offer with the wrong cookie")
-        elif int(codecs.encode(response[4:5], 'hex').hex(), 16) != 2:
+        elif int(codecs.encode(response[4:5], 'hex'), 16) != 2:
             print("recieved an offer with the wrong message type")
         else: #.
-            server_udp_port_num = int(codecs.encode(response[5:7], 'hex').hex(), 16)
-            server_tcp_port_num = int(codecs.encode(response[7:9], 'hex').hex(), 16)
+            server_udp_port_num = int(codecs.encode(response[5:7], 'hex'), 16)
+            server_tcp_port_num = int(codecs.encode(response[7:9], 'hex'), 16)
             if server_udp_port_num > 6500 or server_udp_port_num < 0 or server_tcp_port_num > 6500 or server_tcp_port_num < 0:
                 print("recieved an invalid port number")
             else:
@@ -142,13 +142,13 @@ def udp_connection(size, connection_socket, server_udp_port_num, port_num, serve
             connection_socket.settimeout(None)
             if recieved_server_IP_address == server_IP_address:
                 recieved_message = recieved_message.decode("utf-8")
-                if codecs.encode(recieved_message[0:4], 'hex').hex() != magic_cookie:
+                if codecs.encode(recieved_message[0:4], 'hex').decode() != magic_cookie:
                     print(f"Client UDP transfer number {server_IP_address} recieved a payload with the wrong cookie from the server")
                 elif int(codecs.encode(recieved_message[4:5], 'hex').hex(), 16) != 4:
                     print(f"Client UDP transfer number {transfer_num} recieved wrong message type")
                 else:
-                    total_segments = int(codecs.encode(recieved_message[5:13], 'hex').hex(), 16)
-                    current_segment = int(codecs.encode(recieved_message[13:21], 'hex').hex, 16)
+                    total_segments = int(codecs.encode(recieved_message[5:13], 'hex'), 16)
+                    current_segment = int(codecs.encode(recieved_message[13:21], 'hex'), 16)
                     segment_counter = segment_counter + 1                    
                     segment_len = len(recieved_message) - 20
                 if current_segment == total_segments and segment_counter == total_segments:
