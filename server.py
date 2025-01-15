@@ -32,7 +32,7 @@ def send_offers(server_IP_address, broadcast_port_num, server_udp_port_num, serv
             offer_socket.settimeout(1)
             offer_counter = offer_counter + 1
             #sending the broadcast message
-            offer_socket.sendto(message_to_send, ('127.0.0.1', broadcast_port_num)) #port_num))
+            offer_socket.sendto(message_to_send, ('255.255.255.255', broadcast_port_num)) #port_num))
             offer_socket.settimeout(None)
         except socket.timeout:
             if offer_counter % 10 == 0:
@@ -176,7 +176,7 @@ if __name__ == '__main__':
     offer_message_number = 2
     request_message_number = 3
     payload_message_number = 4
-    IP_address = '0.0.0.0' # socket.gethostbyname(socket.gethostname())
+    IP_address = socket.gethostbyname(socket.gethostname())
     #creating sockets for recieving udp and tcp requests from clients
     udp_socket = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
     tcp_socket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
