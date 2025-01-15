@@ -23,7 +23,7 @@ def send_offers(server_IP_address, broadcast_port_num, server_udp_port_num, serv
     offer_socket.setsockopt(socket.SOL_SOCKET, socket.SO_BROADCAST, 1)
     #creating a message to send
     message_to_send = codecs.decode(magic_cookie, 'hex') + codecs.decode("0" + str(offer_message_number), 'hex') + codecs.decode(hex(server_udp_port_num)[2:], 'hex') + codecs.decode(hex(server_tcp_port_num)[2:], 'hex')
-    print(f"Server started, listening on IP address {server_IP_address}")
+    print(f"\033[92mServer started, listening on IP address {server_IP_address}")
     #broadcasting forever
     while True:
         try:
@@ -37,7 +37,7 @@ def send_offers(server_IP_address, broadcast_port_num, server_udp_port_num, serv
         except socket.timeout:
             if offer_counter % 10 == 0:
                 #printing interesting statistic
-                print(f"Server boradcasted offers {offer_counter} times")
+                print(f"\033[94mServer boradcasted offers {offer_counter} times")
 
 """
 In this function we recive requests for UDP connections from the clients
@@ -61,21 +61,22 @@ def udp_connections(udp_socket, magic_cookie, server_udp_port_number, server_IP_
         (recievedmessage, (client_IP_address, client_udp_port_number)) = udp_socket.recvfrom(1024)
         #checking if this is the correct cookie
         if codecs.encode(recievedmessage[0:4], 'hex').decode() != magic_cookie: 
-            print(f"Server recieved a request with the wrong cookie, from IP: {client_IP_address}")
+            print(f"\033[91mServer recieved a request with the wrong cookie, from IP: {client_IP_address}")
         #checking if this is a request message
         elif int(codecs.encode(recievedmessage[4:5], 'hex'), 16) != request_message_number:
-            print(f"Server recieved a request with the wrong message type, from IP: {client_IP_address}")
+            print(f"\033[91mServer recieved a request with the wrong message type, from IP: {client_IP_address}")
             
         #valid message
         else:
             file_size = int(codecs.encode(recievedmessage[5:13], 'hex'), 16)
-            print(f"Server received a request from {client_IP_address}")
+            print(f"\033[92mServer received a request from {client_IP_address}")
             #creating a thread to start transfering data over a UDP connection
             thread = threading.Thread(target=udp_connection, args=(file_size, magic_cookie, server_IP_address, client_IP_address, client_udp_port_number, server_udp_port_number, transfer_num, payload_message_number, ))
             #starting the thread
             thread.start()
             threads.append(thread)
-            port_number = port_number + 1
+            transfer_num = transfer_num + 1
+            server_udp_port_number = server_udp_port_number + 1
 
 """
 In this function we recive requests for TCP connections from the clients
@@ -96,7 +97,7 @@ def tcp_connections(tcp_socket):
         #receiving a message from this socket
         recievedmessage = specific_tcp_socket.recv(1024)
         file_size = int(codecs.encode(recievedmessage[:-1], 'hex'), 16)
-        print(f"Server received a request from client with IP: {client_IP_address}, and port number: {client_port_nume}")
+        print(f"\033[92mServer received a request from client with IP: {client_IP_address}, and port number: {client_port_nume}")
         #creating a thread to start transfering data over a TCP connection
         thread = threading.Thread(target=tcp_connection, args=(file_size, client_IP_address, specific_tcp_socket, transfer_num, ))
         #starting the thread
@@ -134,12 +135,15 @@ def udp_connection(file_size, magic_cookie, server_IP_address, client_IP_address
         message_to_send = codecs.decode(magic_cookie, 'hex') + codecs.decode("0" + str(payload_message_number), 'hex') + codecs.decode(hex(total_segments)[2:].rjust(16, '0'), 'hex') + codecs.decode(hex(segment_counter)[2:].rjust(16 , '0'), 'hex')
         #adding the data
         message_to_send = message_to_send + b'\a' * segment_size
+        #adding missing data in the last segment
+        if segment_counter + 1 == total_segments:
+            message_to_send = message_to_send + b'\a' * int(file_size%segment_size)
         #sending the message
         server_udp_socket.sendto(message_to_send, (client_IP_address, client_port_number))
         segment_counter = segment_counter + 1
         #printing interesting statistic
         if segment_counter % 10 == 0:
-            print(f"Server already sent {segment_counter} payloads in UDP transfer #{transfer_num} to client with IP: {client_IP_address}")
+            print(f"\033[94mServer already sent {segment_counter} payloads in UDP transfer #{transfer_num} to client with IP: {client_IP_address}")
     #closing the socket
     server_udp_socket.close()
 
@@ -158,8 +162,8 @@ def tcp_connection(file_size, client_IP_address, server_tcp_socket, transfer_num
     #creating the message to send
     message_to_send = b'\a' * file_size
     #adding the '\n' charachter and sending the data
-    tcp_socket.send(codecs.decode(message_to_send, 'hex') + b'\n')
-    print(f"Server sent required data, in size: {file_size} over a TCP #{transfer_num} connection for client with IP: {client_IP_address}")
+    server_tcp_socket.send(message_to_send + b'\n')
+    print(f"\033[92mServer sent required data, in size: {file_size} over a TCP #{transfer_num} connection for client with IP: {client_IP_address}")
     #closing the socket
     server_tcp_socket.close()
 
@@ -178,7 +182,7 @@ if __name__ == '__main__':
     tcp_socket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
     udp_socket.bind((IP_address, server_udp_port_num))
     tcp_socket.bind((IP_address, server_tcp_port_num))
-    print(f"Our IP adress is: {IP_address}\nWe use a port number: {port_num}")
+    print(f"\033[94mOur IP adress is: {IP_address}\nWe use a port number: {port_num}")
     #creating threads
     offer_thread = threading.Thread(target=send_offers, args=(IP_address, port_num, server_udp_port_num, server_tcp_port_num, magic_cookie, offer_message_number, ))
     udp_connections_thread = threading.Thread(target=udp_connections, args=(udp_socket, magic_cookie, server_udp_port_num + 1000, IP_address, request_message_number, payload_message_number))
