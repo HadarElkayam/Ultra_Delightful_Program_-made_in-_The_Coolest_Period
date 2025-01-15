@@ -101,7 +101,7 @@ def looking_for_a_server(client_offer_port_num, magic_cookie, offer_message_numb
     server_recieved = False
     #initializing a socket to recieve offers from
     connection_socket = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
-    client_IP_address = '127.0.0.1' #socket.gethostbyname(socket.gethostname())
+    client_IP_address = socket.gethostbyname(socket.gethostname())
     server_udp_port_num = 0
     server_tcp_port_num = 0
     #binding the socket to our IP and port number
